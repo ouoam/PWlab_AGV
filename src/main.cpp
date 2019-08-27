@@ -6,9 +6,9 @@
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
 
-char auth[] = "T0PuHhtzvWlxXDoH7NDTbmUmF5XYEiSR";
-char ssid[] = "AGV_Network";
-char pass[] = "111222333444";
+char auth[] = "4305ebb3ece54cd7bb96f69eeee95f29";
+char ssid[] = "MikroTik-066735";
+char pass[] = "1234567890";
 
 void go(int r, int l)
 {
@@ -156,7 +156,7 @@ void setup()
 {
   Serial.begin(115200);
 
-  Blynk.begin(auth, ssid, pass, IPAddress(10, 10, 0, 236), 8080);
+  Blynk.begin(auth, ssid, pass, IPAddress(161, 246, 6, 1), 8012);
   Blynk.syncAll();
 
   pinMode(26, OUTPUT);
