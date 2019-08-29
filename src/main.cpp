@@ -6,52 +6,59 @@
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
 
-char auth[] = "4305ebb3ece54cd7bb96f69eeee95f29";
-char ssid[] = "MikroTik-066735";
-char pass[] = "1234567890";
+const char auth[] = "4305ebb3ece54cd7bb96f69eeee95f29";
+const char ssid[] = "MikroTik-066735";
+const char pass[] = "1234567890";
 
-void go(int r, int l)
+const int magnaticSensor[] = {0, 4, 16, 17, -1};
+
+#define MOTER_L_SPEED 33
+#define MOTER_L_REVERSE 27
+#define MOTER_R_SPEED 32
+#define MOTER_R_REVERSE 26
+
+void go(int l, int r)
 {
-  ledcWrite(0, r > 0 ? r : -r);
-  digitalWrite(26, r < 0);
-  ledcWrite(1, l > 0 ? l : -l);
-  digitalWrite(27, l > 0);
+  ledcWrite(0, l > 0 ? l : -l);
+  digitalWrite(MOTER_L_REVERSE, l > 0);
+  ledcWrite(1, r > 0 ? r : -r);
+  digitalWrite(MOTER_R_REVERSE, r < 0);
 }
 
-int rNow = 0;
 int lNow = 0;
-int rTarget;
+int rNow = 0;
 int lTarget;
+int rTarget;
 
 unsigned long nextSetTime = 0;
 
-void setGo(int r, int l)
+void setGo(int l, int r)
 {
-  rTarget = r;
   lTarget = l;
+  rTarget = r;
 }
 
 void loopGo()
 {
   if (millis() > nextSetTime)
   {
-    if (rTarget != rNow)
-    {
-      if (rTarget > rNow)
-        rNow += 2;
-      else
-        rNow -= 2;
-    }
-
     if (lTarget != lNow)
     {
       if (lTarget > lNow)
-        lNow += 2;
+        lNow += 3;
       else
-        lNow -= 2;
+        lNow -= 3;
     }
 
-    go(rNow, lNow);
+    if (rTarget != rNow)
+    {
+      if (rTarget > rNow)
+        rNow += 3;
+      else
+        rNow -= 3;
+    }
+
+    go(lNow, rNow);
 
     nextSetTime += 1;
   }
@@ -63,25 +70,25 @@ bool rBack = false;
 BLYNK_WRITE(V0)
 {
   int pinValue = param.asInt();
-  setGo(rBack ? -pinValue : pinValue, lTarget);
+  setGo(lBack ? -pinValue : pinValue, rTarget);
 }
 
 BLYNK_WRITE(V1)
 {
   int pinValue = param.asInt();
-  setGo(rTarget, lBack ? -pinValue : pinValue);
+  setGo(lTarget, rBack ? -pinValue : pinValue);
 }
 
 BLYNK_WRITE(V2)
 {
   int pinValue = param.asInt();
-  rBack = pinValue == 1;
+  lBack = pinValue == 1;
 }
 
 BLYNK_WRITE(V3)
 {
   int pinValue = param.asInt();
-  lBack = pinValue == 1;
+  rBack = pinValue == 1;
 }
 
 BLYNK_WRITE(V9)
@@ -159,18 +166,36 @@ void setup()
   Blynk.begin(auth, ssid, pass, IPAddress(161, 246, 6, 1), 8012);
   Blynk.syncAll();
 
-  pinMode(26, OUTPUT);
-  pinMode(27, OUTPUT);
+  pinMode(MOTER_L_REVERSE, OUTPUT);
+  pinMode(MOTER_R_REVERSE, OUTPUT);
 
   ledcSetup(0, 500, 10);
-  ledcAttachPin(32, 0);
+  ledcAttachPin(MOTER_L_SPEED, 0);
 
   ledcSetup(1, 500, 10);
-  ledcAttachPin(33, 1);
+  ledcAttachPin(MOTER_R_SPEED, 1);
+
+  for (int i = 0; magnaticSensor[i] != -1; i++)
+  {
+    pinMode(magnaticSensor[i], INPUT);
+  }
 }
+
+unsigned long nextRun = 0;
 
 void loop()
 {
   Blynk.run();
   loopGo();
+
+  // if (millis() >= nextRun)
+  // {
+  //   for (int i = 0; magnaticSensor[i] != -1; i++)
+  //   {
+  //     Serial.print(digitalRead(magnaticSensor[i]));
+  //     Serial.print(" ");
+  //   }
+  //   Serial.println();
+  //   nextRun += 100;
+  // }
 }
