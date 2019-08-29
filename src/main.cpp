@@ -2,6 +2,9 @@
 
 #define BLYNK_PRINT Serial
 
+#define SPEED_L 34
+#define SPEED_R 35
+
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
@@ -167,10 +170,28 @@ void setup()
 
   ledcSetup(1, 500, 10);
   ledcAttachPin(33, 1);
+
+  pinMode(SPEED_L, INPUT);
 }
+
+bool lastSpeedL = false;
+unsigned long count = 0;
+unsigned long lastSendTime = 0;
 
 void loop()
 {
   Blynk.run();
   loopGo();
+  if (millis() % 1000 == 0 && millis() != lastSendTime)
+  {
+    Serial.println(count);
+    count = 0;
+    lastSendTime = millis();
+  }
+  if (lastSpeedL != digitalRead(SPEED_L))
+  {
+    lastSpeedL = !lastSpeedL;
+    if (lastSpeedL)
+      count++;
+  }
 }
