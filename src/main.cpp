@@ -138,7 +138,7 @@ BLYNK_WRITE(V13)
   int Value = param.asInt();
   if (Value == 1)
   {
-    setGo(0, speed);
+    setGo(-speed, speed);
   }
   else
   {
@@ -151,7 +151,7 @@ BLYNK_WRITE(V14)
   int Value = param.asInt();
   if (Value == 1)
   {
-    setGo(speed, 0);
+    setGo(speed, -speed);
   }
   else
   {
