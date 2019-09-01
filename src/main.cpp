@@ -10,7 +10,7 @@ const char auth[] = "4305ebb3ece54cd7bb96f69eeee95f29";
 const char ssid[] = "MikroTik-066735";
 const char pass[] = "1234567890";
 
-const int magnaticSensor[] = {22, 21, 19, 23, -1};
+const int magSensor[] = {22, 21, 19, 23, -1};
 
 #define MOTER_L_SPEED 33
 #define MOTER_L_REVERSE 27
@@ -37,8 +37,10 @@ unsigned long nextSetTimeR = 0;
 
 void setGo(int l, int r)
 {
+  if (l != lTarget)
+  {
   lTarget = l;
-  rTarget = r;
+
   if (-100 < l && l < 100)
   {
     digitalWrite(MOTER_L_LOCK, HIGH);
@@ -47,8 +49,14 @@ void setGo(int l, int r)
   else
   {
     digitalWrite(MOTER_L_LOCK, LOW);
+      if (-100 < lNow && lNow < 100)
     nextSetTimeL = millis() + 150;
   }
+  }
+
+  if (r != rTarget)
+  {
+    rTarget = r;
 
   if (-100 < r && r < 100)
   {
@@ -58,8 +66,10 @@ void setGo(int l, int r)
   else
   {
     digitalWrite(MOTER_R_LOCK, LOW);
+      if (-100 < rNow && rNow < 100)
     nextSetTimeR = millis() + 150;
   }
+}
 }
 
 void loopGo()
@@ -185,6 +195,27 @@ BLYNK_WRITE(V14)
   }
 }
 
+unsigned long nextRun = 0;
+
+bool folowLine = false;
+BLYNK_WRITE(V20)
+{
+  int Value = param.asInt();
+  if (Value == 1)
+    folowLine = true;
+  Serial.println("IN");
+  nextRun = millis();
+  setGo(520, 520);
+}
+
+BLYNK_WRITE(V21)
+{
+  int Value = param.asInt();
+  if (Value == 1)
+    folowLine = false;
+  setGo(0, 0);
+}
+
 void setup()
 {
   Serial.begin(115200);
@@ -203,13 +234,16 @@ void setup()
   ledcSetup(1, 500, 10);
   ledcAttachPin(MOTER_R_SPEED, 1);
 
-  for (int i = 0; magnaticSensor[i] != -1; i++)
+  for (int i = 0; magSensor[i] != -1; i++)
   {
-    pinMode(magnaticSensor[i], INPUT_PULLUP);
+    pinMode(magSensor[i], INPUT_PULLUP);
   }
 }
 
-unsigned long nextRun = 0;
+bool isFound(int port)
+{
+  return !digitalRead(port);
+}
 
 void loop()
 {
