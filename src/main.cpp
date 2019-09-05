@@ -10,7 +10,7 @@ const char auth[] = "4305ebb3ece54cd7bb96f69eeee95f29";
 const char ssid[] = "MikroTik-066735";
 const char pass[] = "1234567890";
 
-const int magSensor[] = {22, 21, 19, 23, -1};
+const int magSensor[] = {23, 19, 21, 22, -1};
 
 #define MOTER_L_SPEED 33
 #define MOTER_L_REVERSE 27
@@ -39,37 +39,13 @@ void setGo(int l, int r)
 {
   if (l != lTarget)
   {
-  lTarget = l;
-
-  if (-100 < l && l < 100)
-  {
-    digitalWrite(MOTER_L_LOCK, HIGH);
-    lNow = l;
-  }
-  else
-  {
-    digitalWrite(MOTER_L_LOCK, LOW);
-      if (-100 < lNow && lNow < 100)
-    nextSetTimeL = millis() + 150;
-  }
+    lTarget = l;
   }
 
   if (r != rTarget)
   {
     rTarget = r;
-
-  if (-100 < r && r < 100)
-  {
-    digitalWrite(MOTER_R_LOCK, HIGH);
-    rNow = r;
   }
-  else
-  {
-    digitalWrite(MOTER_R_LOCK, LOW);
-      if (-100 < rNow && rNow < 100)
-    nextSetTimeR = millis() + 150;
-  }
-}
 }
 
 void loopGo()
@@ -174,7 +150,7 @@ BLYNK_WRITE(V13)
   int Value = param.asInt();
   if (Value == 1)
   {
-    setGo(-speed, speed);
+    setGo(0, speed);
   }
   else
   {
@@ -187,7 +163,7 @@ BLYNK_WRITE(V14)
   int Value = param.asInt();
   if (Value == 1)
   {
-    setGo(speed, -speed);
+    setGo(speed, 0);
   }
   else
   {
@@ -228,10 +204,10 @@ void setup()
   pinMode(MOTER_R_REVERSE, OUTPUT);
   pinMode(MOTER_R_LOCK, OUTPUT);
 
-  ledcSetup(0, 500, 10);
+  ledcSetup(0, 50000, 10);
   ledcAttachPin(MOTER_L_SPEED, 0);
 
-  ledcSetup(1, 500, 10);
+  ledcSetup(1, 50000, 10);
   ledcAttachPin(MOTER_R_SPEED, 1);
 
   for (int i = 0; magSensor[i] != -1; i++)
@@ -245,19 +221,124 @@ bool isFound(int port)
   return !digitalRead(port);
 }
 
+float Kp = 4;
+float Kd = 2;
+float Ki = 0;
+
+BLYNK_WRITE(V31)
+{
+  float Value = param.asFloat();
+  Kp = Value;
+}
+
+BLYNK_WRITE(V32)
+{
+  float Value = param.asFloat();
+  Ki = Value;
+}
+
+BLYNK_WRITE(V33)
+{
+  float Value = param.asFloat();
+  Kd = Value;
+}
+
+//***********************************************************************
+
+//ขับเคลื่อน
+int motorSpeed;
+int baseSpeed = 475;
+int speedB;
+int speedA;
+int maxSpeed = 600;
+int sum_error = 0;
+
+// PID
+int error = 0;
+int pre_error = 0;
+
+bool sss1;
+bool sss2;
+bool sss3;
+bool sss4;
+
+// ********************************************************
+
 void loop()
 {
   Blynk.run();
   loopGo();
 
-  // if (millis() >= nextRun)
+  // for (int i = 0; i < 4; i++)
   // {
-  //   for (int i = 0; magnaticSensor[i] != -1; i++)
-  //   {
-  //     Serial.print(digitalRead(magnaticSensor[i]));
-  //     Serial.print(" ");
-  //   }
-  //   Serial.println();
-  //   nextRun += 100;
+  //   Serial.print(isFound(magSensor[i]));
+  //   Serial.print(" ");
   // }
+  // Serial.println();
+
+  if (folowLine)
+  {
+    sss1 = isFound(magSensor[0]);
+    sss2 = isFound(magSensor[1]);
+    sss3 = isFound(magSensor[2]);
+    sss4 = isFound(magSensor[3]);
+
+    //PID
+    /*    int Ka =analogRead(pin_bA);
+    int Kb =analogRead(pin_bB);
+    int Kc =analogRead(pin_bC);*/
+
+    if (sss2 && sss3 && sss4)
+    {
+      error = 3;
+    }
+    else if (sss2 && sss3 && !sss4)
+    {
+      error = 2;
+    }
+    else if (sss2 && !sss3)
+    {
+      error = 1;
+    }
+
+    else if (sss1)
+    {
+      error = -2;
+    }
+    else
+    // (sss4 && sss3 && sss2 && sss1)
+    {
+      error = 0;
+    }
+
+    /// check black black
+
+    /* else if( (sss1 > 500) && (sss2> 500) && (sss3 > 500 ) && (sss4 > 500) &&(sss5 > 500) && (sss6 > 500) && (sss7 > 500) && (sss8 > 500) && (sss9 > 500) )
+    {
+        error = pre_error;
+    }
+*/
+    motorSpeed = Kp * error + Kd * (error - pre_error) + Ki * (sum_error);
+    speedA = baseSpeed + motorSpeed;
+    speedB = baseSpeed - motorSpeed;
+
+    if (speedA > maxSpeed)
+      speedA = maxSpeed;
+    if (speedB > maxSpeed)
+      speedB = maxSpeed;
+    if (speedA < 0)
+      speedA = 0;
+    if (speedB < 0)
+      speedB = 0;
+
+    pre_error = error;
+    sum_error += error;
+    Serial.print("speed A");
+    Serial.println(speedA);
+    Serial.print("speed B");
+    Serial.println(speedB);
+
+    setGo(speedA, speedB);
+    delay(10);
+  }
 }
