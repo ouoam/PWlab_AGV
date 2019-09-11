@@ -10,7 +10,7 @@ const char auth[] = "4305ebb3ece54cd7bb96f69eeee95f29";
 const char ssid[] = "MikroTik-066735";
 const char pass[] = "1234567890";
 
-const int magSensor[] = {23, 19, 21, 22, -1};
+const int magSensor[] = {4, 16, 17, -1};
 
 #define MOTER_L_SPEED 33
 #define MOTER_L_REVERSE 27
@@ -247,7 +247,7 @@ BLYNK_WRITE(V33)
 
 //ขับเคลื่อน
 int motorSpeed;
-int baseSpeed = 475;
+int baseSpeed = 460;
 int speedB;
 int speedA;
 int maxSpeed = 600;
@@ -281,64 +281,71 @@ void loop()
     sss1 = isFound(magSensor[0]);
     sss2 = isFound(magSensor[1]);
     sss3 = isFound(magSensor[2]);
-    sss4 = isFound(magSensor[3]);
 
-    //PID
-    /*    int Ka =analogRead(pin_bA);
-    int Kb =analogRead(pin_bB);
-    int Kc =analogRead(pin_bC);*/
+    int sen = (sss1 << 2) | (sss2 << 1) | (sss3 << 0);
 
-    if (sss2 && sss3 && sss4)
+    if (sen == 0)
     {
-      error = 3;
-    }
-    else if (sss2 && sss3 && !sss4)
-    {
-      error = 2;
-    }
-    else if (sss2 && !sss3)
-    {
-      error = 1;
-    }
-
-    else if (sss1)
-    {
-      error = -2;
+      folowLine = false;
+      setGo(0, 0);
     }
     else
-    // (sss4 && sss3 && sss2 && sss1)
     {
-      error = 0;
+      int error = 0;
+
+      switch (sen)
+      {
+      case 0b100:
+        error = -2;
+        break;
+      case 0b110:
+        error = -1;
+        break;
+      case 0b010:
+        error = 0;
+        break;
+      case 0b011:
+        error = 1;
+        break;
+      case 0b001:
+        error = 2;
+        break;
+      }
+
+      //PID
+      /*    int Ka =analogRead(pin_bA);
+      int Kb =analogRead(pin_bB);
+      int Kc =analogRead(pin_bC);*/
+
+      /// check black black
+
+      /* else if( (sss1 > 500) && (sss2> 500) && (sss3 > 500 ) && (sss4 > 500) &&(sss5 > 500) && (sss6 > 500) && (sss7 > 500) && (sss8 > 500) && (sss9 > 500) )
+      {
+          error = pre_error;
+      }
+  */
+      motorSpeed = Kp * error + Kd * (error - pre_error) + Ki * (sum_error);
+      speedA = baseSpeed + motorSpeed;
+      speedB = baseSpeed - motorSpeed;
+
+      if (speedA > maxSpeed)
+        speedA = maxSpeed;
+      if (speedB > maxSpeed)
+        speedB = maxSpeed;
+      if (speedA < 0)
+        speedA = 0;
+      if (speedB < 0)
+        speedB = 0;
+
+      pre_error = error;
+      sum_error += error;
+      Serial.print("speed A");
+      Serial.println(speedA);
+      Serial.print("speed B");
+      Serial.println(speedB);
+
+      setGo(speedA, speedB);
+      delay(10);
     }
-
-    /// check black black
-
-    /* else if( (sss1 > 500) && (sss2> 500) && (sss3 > 500 ) && (sss4 > 500) &&(sss5 > 500) && (sss6 > 500) && (sss7 > 500) && (sss8 > 500) && (sss9 > 500) )
-    {
-        error = pre_error;
-    }
-*/
-    motorSpeed = Kp * error + Kd * (error - pre_error) + Ki * (sum_error);
-    speedA = baseSpeed + motorSpeed;
-    speedB = baseSpeed - motorSpeed;
-
-    if (speedA > maxSpeed)
-      speedA = maxSpeed;
-    if (speedB > maxSpeed)
-      speedB = maxSpeed;
-    if (speedA < 0)
-      speedA = 0;
-    if (speedB < 0)
-      speedB = 0;
-
-    pre_error = error;
-    sum_error += error;
-    Serial.print("speed A");
-    Serial.println(speedA);
-    Serial.print("speed B");
-    Serial.println(speedB);
-
-    setGo(speedA, speedB);
-    delay(10);
   }
 }
