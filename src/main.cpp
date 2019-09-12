@@ -7,7 +7,7 @@
 #include <BlynkSimpleEsp32.h>
 
 const char auth[] = "4305ebb3ece54cd7bb96f69eeee95f29";
-const char ssid[] = "MikroTik-066735";
+const char ssid[] = "MikroTik-066737";
 const char pass[] = "1234567890";
 
 const int magSensor[] = {4, 16, 17, -1};
@@ -55,11 +55,11 @@ void loopGo()
     if (lTarget != lNow)
     {
       if (lTarget > lNow)
-        lNow += 3;
+        lNow += 1;
       else
-        lNow -= 3;
+        lNow -= 1;
     }
-    nextSetTimeL += 1;
+    nextSetTimeL += 5;
   }
 
   if (millis() > nextSetTimeR)
@@ -67,11 +67,11 @@ void loopGo()
     if (rTarget != rNow)
     {
       if (rTarget > rNow)
-        rNow += 3;
+        rNow += 1;
       else
-        rNow -= 3;
+        rNow -= 1;
     }
-    nextSetTimeR += 1;
+    nextSetTimeR += 5;
   }
   go(lNow, rNow);
 }
@@ -204,6 +204,8 @@ void setup()
   pinMode(MOTER_R_REVERSE, OUTPUT);
   pinMode(MOTER_R_LOCK, OUTPUT);
 
+  pinMode(22, INPUT_PULLUP);
+
   ledcSetup(0, 50000, 10);
   ledcAttachPin(MOTER_L_SPEED, 0);
 
@@ -247,7 +249,7 @@ BLYNK_WRITE(V33)
 
 //ขับเคลื่อน
 int motorSpeed;
-int baseSpeed = 460;
+int baseSpeed = 440;
 int speedB;
 int speedA;
 int maxSpeed = 600;
@@ -275,6 +277,24 @@ void loop()
   //   Serial.print(" ");
   // }
   // Serial.println();
+
+  if (analogRead(35) < 200)
+  {
+    setGo(0, 0);
+    lNow = 0;
+    rNow = 0;
+    go(lNow, rNow);
+    Serial.println(analogRead(35));
+    delay(1000);
+  }
+
+  if (digitalRead(22) == 0)
+  {
+    folowLine = true;
+    Serial.println("IN");
+    nextRun = millis();
+    setGo(520, 520);
+  }
 
   if (folowLine)
   {
@@ -328,6 +348,12 @@ void loop()
       speedA = baseSpeed + motorSpeed;
       speedB = baseSpeed - motorSpeed;
 
+      if (error == 0)
+      {
+        speedA += 50;
+        speedB += 50;
+      }
+
       if (speedA > maxSpeed)
         speedA = maxSpeed;
       if (speedB > maxSpeed)
@@ -339,13 +365,8 @@ void loop()
 
       pre_error = error;
       sum_error += error;
-      Serial.print("speed A");
-      Serial.println(speedA);
-      Serial.print("speed B");
-      Serial.println(speedB);
 
       setGo(speedA, speedB);
-      delay(10);
     }
   }
 }
