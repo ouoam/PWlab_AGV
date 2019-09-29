@@ -7,24 +7,18 @@
 #include <BlynkSimpleEsp32.h>
 
 const char auth[] = "4305ebb3ece54cd7bb96f69eeee95f29";
-const char ssid[] = "MikroTik-066737";
-const char pass[] = "1234567890";
+const char ssid[] = "KMITL-WIFI";
+const char pass[] = "";
 
 const int magSensor[] = {4, 16, 17, -1};
 
 #define MOTER_L_SPEED 33
-#define MOTER_L_REVERSE 27
-#define MOTER_L_LOCK 13
 #define MOTER_R_SPEED 32
-#define MOTER_R_REVERSE 26
-#define MOTER_R_LOCK 12
 
 void go(int l, int r)
 {
-  ledcWrite(0, l > 0 ? l : -l);
-  digitalWrite(MOTER_L_REVERSE, l > 0);
-  ledcWrite(1, r > 0 ? r : -r);
-  digitalWrite(MOTER_R_REVERSE, r < 0);
+  ledcWrite(0, l);
+  ledcWrite(1, r);
 }
 
 int lNow = 0;
@@ -59,7 +53,7 @@ void loopGo()
       else
         lNow -= 1;
     }
-    nextSetTimeL += 5;
+    nextSetTimeL += 10;
   }
 
   if (millis() > nextSetTimeR)
@@ -71,7 +65,7 @@ void loopGo()
       else
         rNow -= 1;
     }
-    nextSetTimeR += 5;
+    nextSetTimeR += 10;
   }
   go(lNow, rNow);
 }
@@ -199,11 +193,6 @@ void setup()
   Blynk.begin(auth, ssid, pass, IPAddress(161, 246, 6, 1), 8012);
   Blynk.syncAll();
 
-  pinMode(MOTER_L_REVERSE, OUTPUT);
-  pinMode(MOTER_L_LOCK, OUTPUT);
-  pinMode(MOTER_R_REVERSE, OUTPUT);
-  pinMode(MOTER_R_LOCK, OUTPUT);
-
   pinMode(22, INPUT_PULLUP);
 
   ledcSetup(0, 50000, 10);
@@ -249,10 +238,10 @@ BLYNK_WRITE(V33)
 
 //ขับเคลื่อน
 int motorSpeed;
-int baseSpeed = 440;
+int baseSpeed = 400;
 int speedB;
 int speedA;
-int maxSpeed = 600;
+int maxSpeed = 1000;
 int sum_error = 0;
 
 // PID
@@ -278,23 +267,23 @@ void loop()
   // }
   // Serial.println();
 
-  if (analogRead(35) < 200)
-  {
-    setGo(0, 0);
-    lNow = 0;
-    rNow = 0;
-    go(lNow, rNow);
-    Serial.println(analogRead(35));
-    delay(1000);
-  }
+  // if (analogRead(35) < 200)
+  // {
+  //   setGo(0, 0);
+  //   lNow = 0;
+  //   rNow = 0;
+  //   go(lNow, rNow);
+  //   Serial.println(analogRead(35));
+  //   delay(1000);
+  // }
 
-  if (digitalRead(22) == 0)
-  {
-    folowLine = true;
-    Serial.println("IN");
-    nextRun = millis();
-    setGo(520, 520);
-  }
+  // if (digitalRead(22) == 0)
+  // {
+  //   folowLine = true;
+  //   Serial.println("IN");
+  //   nextRun = millis();
+  //   setGo(520, 520);
+  // }
 
   if (folowLine)
   {
@@ -365,6 +354,9 @@ void loop()
 
       pre_error = error;
       sum_error += error;
+
+      lNow = speedA;
+      rNow = speedB;
 
       setGo(speedA, speedB);
     }
