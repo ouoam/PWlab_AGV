@@ -10,7 +10,7 @@ const char auth[] = "4305ebb3ece54cd7bb96f69eeee95f29";
 const char ssid[] = "KMITL-WIFI";
 const char pass[] = "";
 
-const int magSensor[] = {4, 16, 17, -1};
+const int magSensor[] = {4, 16, 17, 5, 18, 19, -1};
 
 #define MOTER_L_SPEED 33
 #define MOTER_R_SPEED 32
@@ -49,11 +49,11 @@ void loopGo()
     if (lTarget != lNow)
     {
       if (lTarget > lNow)
-        lNow += 1;
+        lNow += 7;
       else
-        lNow -= 1;
+        lNow -= 7;
     }
-    nextSetTimeL += 10;
+    nextSetTimeL += 1;
   }
 
   if (millis() > nextSetTimeR)
@@ -61,16 +61,17 @@ void loopGo()
     if (rTarget != rNow)
     {
       if (rTarget > rNow)
-        rNow += 1;
+        rNow += 7;
       else
-        rNow -= 1;
+        rNow -= 7;
     }
-    nextSetTimeR += 10;
+    nextSetTimeR += 1;
   }
   go(lNow, rNow);
 }
 
 bool lBack = false;
+
 bool rBack = false;
 
 BLYNK_WRITE(V0)
@@ -172,10 +173,12 @@ BLYNK_WRITE(V20)
 {
   int Value = param.asInt();
   if (Value == 1)
+  {
     folowLine = true;
-  Serial.println("IN");
-  nextRun = millis();
-  setGo(520, 520);
+    nextRun = millis();
+    Serial.println("IN");
+    setGo(520, 520);
+  }
 }
 
 BLYNK_WRITE(V21)
@@ -238,7 +241,7 @@ BLYNK_WRITE(V33)
 
 //ขับเคลื่อน
 int motorSpeed;
-int baseSpeed = 400;
+int baseSpeed = 700;
 int speedB;
 int speedA;
 int maxSpeed = 1000;
@@ -260,7 +263,7 @@ void loop()
   Blynk.run();
   loopGo();
 
-  // for (int i = 0; i < 4; i++)
+  // for (int i = 0; magSensor[i] != -1; i++)
   // {
   //   Serial.print(isFound(magSensor[i]));
   //   Serial.print(" ");
@@ -287,16 +290,17 @@ void loop()
 
   if (folowLine)
   {
-    sss1 = isFound(magSensor[0]);
-    sss2 = isFound(magSensor[1]);
-    sss3 = isFound(magSensor[2]);
-
-    int sen = (sss1 << 2) | (sss2 << 1) | (sss3 << 0);
+    int sen = 0;
+    for (int i = 0; magSensor[i] != -1; i++)
+    {
+      sen |= isFound(magSensor[i]) << (5 - i);
+    }
 
     if (sen == 0)
     {
       folowLine = false;
       setGo(0, 0);
+      Serial.println("OUT");
     }
     else
     {
@@ -304,20 +308,42 @@ void loop()
 
       switch (sen)
       {
-      case 0b100:
+      case 0b100000:
+        error = -7;
+        break;
+      case 0b110000:
+        error = -4;
+        break;
+      case 0b010000:
+      case 0b111000:
+        error = -3;
+        break;
+      case 0b011000:
         error = -2;
         break;
-      case 0b110:
+      case 0b001000:
+      case 0b011100:
         error = -1;
         break;
-      case 0b010:
+      case 0b001100:
         error = 0;
         break;
-      case 0b011:
+      case 0b001110:
+      case 0b000100:
         error = 1;
         break;
-      case 0b001:
+      case 0b000110:
         error = 2;
+        break;
+      case 0b000111:
+      case 0b000010:
+        error = 3;
+        break;
+      case 0b000011:
+        error = 4;
+        break;
+      case 0b000001:
+        error = 7;
         break;
       }
 
@@ -337,11 +363,11 @@ void loop()
       speedA = baseSpeed + motorSpeed;
       speedB = baseSpeed - motorSpeed;
 
-      if (error == 0)
-      {
-        speedA += 50;
-        speedB += 50;
-      }
+      // if (error == 0)
+      // {
+      //   speedA += 50;
+      //   speedB += 50;
+      // }
 
       if (speedA > maxSpeed)
         speedA = maxSpeed;
@@ -354,9 +380,6 @@ void loop()
 
       pre_error = error;
       sum_error += error;
-
-      lNow = speedA;
-      rNow = speedB;
 
       setGo(speedA, speedB);
     }
